@@ -33,11 +33,28 @@ ROOT = Path(__file__).resolve().parent
 STATE_DIR = ROOT / "state"
 CONFIG_PATH = ROOT / "config.json"
 
-# A browser-like UA: the bare python-requests UA is blocked by some sites.
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36 page-monitor/1.0"
-)
+# Full browser-like header set. Some WAFs (e.g. LiteSpeed from datacenter IPs)
+# return 415/403 to requests that omit Accept/Accept-Language, so send them all.
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;q=0.9,"
+        "image/avif,image/webp,image/apng,*/*;q=0.8"
+    ),
+    "Accept-Language": "en-US,en;q=0.9,ro;q=0.8",
+    # Intentionally NOT setting Accept-Encoding: let requests advertise only the
+    # codecs it can decode (avoids getting Brotli back and failing to decode it).
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+}
 HTTP_TIMEOUT = 30
 DIFF_MAX_LINES = 40   # lines of diff included in the alert body
 DIFF_MAX_CHARS = 3500  # hard cap on alert body length
@@ -62,7 +79,7 @@ def fetch_text(url: str, selector: str | None) -> str:
     so UTF-8 pages with diacritics (Romanian, Norwegian, ...) decode correctly
     instead of being mangled by requests' latin-1 fallback.
     """
-    resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=HTTP_TIMEOUT)
+    resp = requests.get(url, headers=BROWSER_HEADERS, timeout=HTTP_TIMEOUT)
     resp.raise_for_status()
 
     # Pass raw bytes so bs4 detects the real encoding from the HTML meta tags.
