@@ -1,0 +1,10 @@
+{
+  "ntfy_server": "https://ntfy.sh",
+  "watches": [
+    {
+      "name": "CNGL - admitere clasa a V-a 2026-2027",
+      "url": "https://www.cngl.eu/event/admitere-clasa-a-v-a-2026-2027/",
+      "selector": "main"
+    }
+  ]
+}

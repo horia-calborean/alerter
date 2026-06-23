@@ -1,0 +1,47 @@
+name: page-monitor
+
+on:
+  schedule:
+    # Every 30 minutes. GitHub may delay scheduled runs under load; treat the
+    # interval as "about every 30 min", not exact.
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}   # lets you trigger a run by hand from the Actions tab
+
+# Allow the job to commit the updated snapshot back to the repo.
+permissions:
+  contents: write
+
+# Never let two runs overlap (they would race on the snapshot commit).
+concurrency:
+  group: page-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Run monitor
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python monitor.py
+
+      - name: Commit updated snapshot
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/
+          if git diff --cached --quiet; then
+            echo "No snapshot changes to commit."
+          else
+            git commit -m "chore: update page snapshot [skip ci]"
+            git push
+          fi
